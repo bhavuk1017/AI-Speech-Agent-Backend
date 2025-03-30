@@ -2,4 +2,5 @@ flask
 gunicorn
 requests
 pymongo
+flask_cors
 python-dotenv  # Optional for local development
