@@ -14,7 +14,8 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Initialize clients
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+api_key=os.getenv("GROQ_API_KEY")
+groq_client = Groq(api_key)
 client = MongoClient(os.getenv("MONGO_URI"))
 db = client.examdb
 
