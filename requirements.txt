@@ -3,4 +3,5 @@ gunicorn
 requests
 pymongo
 flask_cors
+groq
 python-dotenv  # Optional for local development

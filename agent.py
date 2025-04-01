@@ -1,19 +1,22 @@
 from flask import Flask, request, jsonify
-import requests 
+import requests
 from flask_cors import CORS
-from pymongo import MongoClient  
+from pymongo import MongoClient
 import datetime
 import os
+from groq import Groq
+from dotenv import load_dotenv  # Added environment loader
+
+# Load environment variables first
+load_dotenv()
+
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")  
-MONGO_URI = os.getenv("MONGO_URI") 
-
-# MongoDB connection setup
-client = MongoClient(MONGO_URI)
+# Initialize clients
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+client = MongoClient(os.getenv("MONGO_URI"))
 db = client.examdb
-
 
 def store_exam_details(student_name, subject, topic, score, cheated, entry_time):
     try:
@@ -31,7 +34,6 @@ def store_exam_details(student_name, subject, topic, score, cheated, entry_time)
 def evaluate_answer_ai(question1, answer1, question2, answer2, question3, answer3, question4, answer4):
     prompt = f"""
     You are an educational AI assistant evaluating a student's answers.
-
     Evaluate these responses:
 
     Question 1: {question1}
@@ -60,25 +62,17 @@ def evaluate_answer_ai(question1, answer1, question2, answer2, question3, answer
     Challenges: [feedback on Answer 4]
     Overall: [summary feedback]
     """
-
     try:
-        response = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            json={
-                "model": "llama-3.3-70b-versatile",
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 1000
-            },
-            headers={
-                "Authorization": f"Bearer {GROQ_API_KEY}",
-                "Content-Type": "application/json"
-            }
+        chat_completion = groq_client.chat.completions.create(
+            messages=[{
+                "role": "user",
+                "content": prompt
+            }],
+            model="llama3-70b-8192",
+            temperature=0.7,
+            max_tokens=1000
         )
-
-        # Parse response JSON before accessing its keys
-        response_data = response.json()  
-        return response_data["choices"][0]["message"]["content"]
-    
+        return chat_completion.choices[0].message.content
     except Exception as e:
         return f"Score: 0\nError: {str(e)}"
 
@@ -117,7 +111,6 @@ def extract_keywords():
     try:
         data = request.json
         text = data['text']
-        # Simple keyword extraction (you could use NLTK/spaCy here)
         words = text.lower().split()
         stop_words = {'a', 'an', 'the', 'is', 'are', 'in', 'on', 'to', 'for', 'with', 'about', 'of'}
         keywords = [word for word in words if word not in stop_words and len(word) > 3][:2]
